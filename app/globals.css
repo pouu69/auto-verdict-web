@@ -1,0 +1,137 @@
+:root {
+  --av-bg: #f7f8fa;
+  --av-surface: #ffffff;
+  --av-primary: #0064ff;
+  --av-text-primary: #1a1a1a;
+  --av-text-secondary: #888888;
+  --av-border: #f0f0f0;
+  --av-frame-max: 1320px;
+  --av-content-max: 960px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #e9ebef;
+  color: var(--av-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard',
+    'Malgun Gothic', 'Noto Sans KR', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ── App frame ──────────────────────────────────────────────
+   Mobile: full-bleed single column.
+   Desktop (>=1024px): a centered app window with side navigation. */
+.av-app-frame {
+  position: relative;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--av-bg);
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+@media (min-width: 1024px) {
+  .av-app-frame {
+    max-width: var(--av-frame-max);
+    height: 100dvh;
+    min-height: 0;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+}
+
+/* Shell = sidebar (desktop) + body. Column on mobile, row on desktop. */
+.av-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.av-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.av-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Width-capped, centered content (applies to tabs and full-screen overlays). */
+.av-content {
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Overlays (result / compare / privacy) get more room than the tab content. */
+.av-overlay {
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .av-overlay {
+    max-width: 1180px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .av-shell {
+    flex-direction: row;
+  }
+  .av-content {
+    max-width: var(--av-content-max);
+  }
+}
+
+/* Bottom nav: visible on mobile/tablet, hidden on desktop (replaced by side rail). */
+.av-nav-bottom {
+  display: flex;
+}
+.av-nav-side {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .av-nav-bottom {
+    display: none;
+  }
+  .av-nav-side {
+    display: flex;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  AutoVerdict Web — AWS Amplify Hosting (Next.js SSR / WEB_COMPUTE).
+  Declarative infra so the whole app can be created/updated with the AWS CLI
+  (`aws cloudformation deploy`). Amplify builds from the connected Git branch
+  using the inline build spec below.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: autoverdict-web
+    Description: Amplify app name.
+
+  RepositoryUrl:
+    Type: String
+    Description: >-
+      Git repository URL to connect (e.g. https://github.com/<owner>/<repo>).
+      Required — Amplify Next.js SSR deploys from Git.
+
+  GithubAccessToken:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: >-
+      GitHub personal access token (repo scope) used to connect the repository.
+      Leave empty if the repo is already connected / using CodeCommit.
+
+  BranchName:
+    Type: String
+    Default: main
+    Description: Git branch to build and host.
+
+  AdsenseClient:
+    Type: String
+    Default: ''
+    Description: NEXT_PUBLIC_ADSENSE_CLIENT (e.g. ca-pub-xx…). Optional.
+
+  AdsenseSlot:
+    Type: String
+    Default: ''
+    Description: NEXT_PUBLIC_ADSENSE_SLOT. Optional.
+
+  DomainName:
+    Type: String
+    Default: ''
+    Description: >-
+      Custom domain to attach (e.g. autoverdict.com). Optional — leave empty to
+      use the default *.amplifyapp.com domain. The domain must be reachable by
+      ACM/Route 53 for validation.
+
+Conditions:
+  HasToken: !Not [!Equals [!Ref GithubAccessToken, '']]
+  HasDomain: !Not [!Equals [!Ref DomainName, '']]
+
+Resources:
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Ref AppName
+      Repository: !Ref RepositoryUrl
+      AccessToken: !If [HasToken, !Ref GithubAccessToken, !Ref 'AWS::NoValue']
+      # WEB_COMPUTE = managed compute for Next.js SSR (API routes, /api/encar).
+      Platform: WEB_COMPUTE
+      # NOTE: Next.js SSR (WEB_COMPUTE) provisions a managed compute role
+      # automatically. If a stack deploy ever fails citing a missing service
+      # role, add an `IAMServiceRole: <role-arn>` property here.
+      EnvironmentVariables:
+        - Name: NEXT_PUBLIC_ADSENSE_CLIENT
+          Value: !Ref AdsenseClient
+        - Name: NEXT_PUBLIC_ADSENSE_SLOT
+          Value: !Ref AdsenseSlot
+      BuildSpec: |
+        version: 1
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - nvm use 20 || nvm install 20
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: .next
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+              - .next/cache/**/*
+
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: !Ref BranchName
+      EnableAutoBuild: true
+      Framework: 'Next.js - SSR'
+      Stage: PRODUCTION
+
+  AmplifyDomain:
+    Type: AWS::Amplify::Domain
+    Condition: HasDomain
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      DomainName: !Ref DomainName
+      EnableAutoSubDomain: false
+      SubDomainSettings:
+        - Prefix: ''
+          BranchName: !GetAtt AmplifyBranch.BranchName
+        - Prefix: 'www'
+          BranchName: !GetAtt AmplifyBranch.BranchName
+
+Outputs:
+  AppId:
+    Description: Amplify App ID (use with `aws amplify start-job`).
+    Value: !GetAtt AmplifyApp.AppId
+  DefaultDomain:
+    Description: Amplify default domain.
+    Value: !GetAtt AmplifyApp.DefaultDomain
+  BranchUrl:
+    Description: Public URL of the deployed branch.
+    Value: !Sub 'https://${BranchName}.${AmplifyApp.DefaultDomain}'
+  CustomDomainUrl:
+    Condition: HasDomain
+    Description: Custom domain URL (after DNS/ACM validation completes).
+    Value: !Sub 'https://${DomainName}'
